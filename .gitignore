@@ -1,0 +1,30 @@
+# Environment variables with secrets
+.env
+.env.local
+.env.*.local
+
+# Persistent data directories (contain user data, databases, etc.)
+persist/
+
+# Let's Encrypt certificates (if any remain)
+configs/acme/
+
+# Docker volumes and data
+*.log
+*.pid
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.bak
+

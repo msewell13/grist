@@ -49,10 +49,8 @@ services:
     volumes:
       # Where to store persistent data, such as documents.
       - ${PERSIST_DIR}/grist:/persist
-    labels:
-      - "traefik.http.services.grist.loadbalancer.server.port=8484"
-      - "traefik.http.routers.grist.rule=Host(`${GRIST_DOMAIN}`)"
-      - "traefik.http.routers.grist.tls.certresolver=letsencrypt"
+    ports:
+      - "8484:8484"
     depends_on:
       grist-db:
         condition: service_started
@@ -117,6 +115,8 @@ services:
       /usr/bin/mc anonymous set public myminio/grist-docs;
       /usr/bin/mc version enable myminio/grist-docs;
       "
+    labels:
+      - "traefik.enable=false"
 
   kc_postgresql:
     image: postgres:alpine
@@ -124,16 +124,18 @@ services:
       - "5433:5432"
     environment:
       # Postgresql db container configuration
-      - POSTGRES_DB=keycloak
-      - POSTGRES_USER=grist
-      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: grist
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
 
-      # App database configuration
-      - DB_HOST=kc_postgresql
-      - DB_NAME=keycloak
-      - DB_USER=grist
-      - DB_PASSWORD=${DATABASE_PASSWORD}
-      - DB_PORT=5433
+      # App database configuration (not used by postgres, but kept for reference)
+      DB_HOST: kc_postgresql
+      DB_NAME: keycloak
+      DB_USER: grist
+      DB_PASSWORD: ${DATABASE_PASSWORD}
+      DB_PORT: "5433"
+    volumes:
+      - ${PERSIST_DIR}/keycloak/db:/var/lib/postgresql/data
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.2.0
@@ -152,10 +154,15 @@ services:
       KC_DB_USERNAME: grist
       KC_DB_SCHEMA: public
 
-      KC_HOSTNAME: ${GRIST_DOMAIN}
       KC_HTTP_ENABLED: true
-      KC_PROXY_HEADERS: xforwarded
       KC_HTTP_RELATIVE_PATH: /keycloak
+      KC_PROXY: edge
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_BACKCHANNEL: false
+      KC_HOSTNAME_URL: https://${GRIST_DOMAIN}/keycloak
+      KC_HOSTNAME_ADMIN_URL: https://${GRIST_DOMAIN}/keycloak
+      KC_HOSTNAME_PORT: -1
     ports:
       - "8080:8080"
       - "8083:8083"
@@ -165,28 +172,4 @@ services:
     healthcheck:
       # This healthcheck is a way to wait for Keycloak to be ready. It only checks Keycloak's health once since healthchecks in KC are sometimes weird : https://github.com/keycloak/keycloak/discussions/10575
       test: ["CMD-SHELL", "if [ ! -f /tmp/health.txt ]; then touch /tmp/health.txt && exec 3<>/dev/tcp/127.0.0.1/9000;echo -e 'GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n' >&3;if [ $? -eq 0 ]; then echo 'Healthcheck Successful';exit 0;else echo 'Healthcheck Failed';exit 1;fi; else echo \"Healthcheck already executed\"; fi"]
-    labels:
-      - "traefik.http.routers.keycloak.rule=Host(`${GRIST_DOMAIN}`) && PathPrefix(`/keycloak`)"
-      - "traefik.http.routers.keycloak.entrypoints=websecure"
-      - "traefik.http.routers.keycloak.tls.certresolver=letsencrypt"
-      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
 
-  traefik:
-    image: traefik:latest
-    environment:
-      TRAEFIK_CERTIFICATESRESOLVERS_letsencrypt_ACME_EMAIL: ${GRIST_DEFAULT_EMAIL}
-    ports:
-      # HTTP Ports
-      - "80:80"
-      - "443:443"
-      # The Web UI (enabled by --api.insecure=true)
-      # - "8080:8080"
-    volumes:
-      # Set the config file for traefik - this is loaded automatically.
-      - ./configs/traefik-config.yml:/etc/traefik/traefik.yml
-      # Certificate location, if automatic certificate setup is enabled.
-      - ./configs/acme:/acme
-      # Traefik needs docker access when configured via docker labels.
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - grist
