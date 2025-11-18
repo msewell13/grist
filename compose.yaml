@@ -185,3 +185,13 @@ services:
     ports:
       - '7575:7575'
 
+  dashdot:
+    container_name: dashdot
+    image: mauricenino/dashdot:latest
+    restart: unless-stopped
+    privileged: true  # Required for system monitoring
+    ports:
+      - '3001:3001'  # Host port 3001 maps to container port 3001
+    volumes:
+      - /:/mnt/host:ro  # Read-only mount of root filesystem for system stats
+
