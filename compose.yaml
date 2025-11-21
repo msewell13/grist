@@ -259,3 +259,36 @@ services:
       - DISABLE_ADDITIONAL_FEATURES=false
       - LANGS=en_GB
 
+  docuseal-db:
+    container_name: docuseal-db
+    image: postgres:alpine
+    restart: unless-stopped
+    ports:
+      - "5435:5432"  # Host port 5435 maps to container port 5432
+    environment:
+      POSTGRES_DB: docuseal
+      POSTGRES_USER: docuseal
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - ${PERSIST_DIR}/docuseal/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docuseal"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  docuseal:
+    container_name: docuseal
+    image: docuseal/docuseal:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # DocuSeal web interface
+    volumes:
+      - ${PERSIST_DIR}/docuseal/data:/data
+    environment:
+      - DATABASE_URL=postgresql://docuseal:${DATABASE_PASSWORD}@docuseal-db:5432/docuseal
+      - FORCE_SSL=false
+    depends_on:
+      docuseal-db:
+        condition: service_healthy
+
