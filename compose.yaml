@@ -243,3 +243,19 @@ services:
     depends_on:
       - ollama
 
+  stirling-pdf:
+    container_name: stirling-pdf
+    image: frooodle/s-pdf:latest
+    restart: unless-stopped
+    ports:
+      - "8081:8080"  # Host port 8081 maps to container port 8080 (8080 already used by keycloak)
+    volumes:
+      - ${PERSIST_DIR}/stirling-pdf/trainingData:/usr/share/tessdata  # Required for extra OCR languages
+      - ${PERSIST_DIR}/stirling-pdf/extraConfigs:/configs
+      - ${PERSIST_DIR}/stirling-pdf/customFiles:/customFiles
+      - ${PERSIST_DIR}/stirling-pdf/logs:/logs
+      - ${PERSIST_DIR}/stirling-pdf/pipeline:/pipeline
+    environment:
+      - DISABLE_ADDITIONAL_FEATURES=false
+      - LANGS=en_GB
+
