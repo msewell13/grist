@@ -28,3 +28,14 @@ Thumbs.db
 *.tmp
 *.bak
 
+# Private and public keys
+*private*
+*public*
+*.key
+*.pem
+*.pub
+id_rsa*
+id_ed25519*
+*.p12
+*.pfx
+
