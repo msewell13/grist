@@ -10,3 +10,10 @@ HOMARR_SECRET_KEY=
 COLLABORA_ALIASGROUP1=https://yourdomain.com:443
 COLLABORA_ADMIN_USER=admin
 COLLABORA_ADMIN_PASSWORD=
+
+# Paperless-ngx (required)
+PAPERLESS_SECRET_KEY=
+PAPERLESS_TIME_ZONE=America/Chicago
+PAPERLESS_OCR_LANGUAGE=eng
+# Optional: API token for Nextcloud integration (generate in paperless-ngx admin panel)
+PAPERLESS_API_TOKEN=

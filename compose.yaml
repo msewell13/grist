@@ -366,6 +366,8 @@ services:
       - ${PERSIST_DIR}/nextcloud/html:/var/www/html
       - ${PERSIST_DIR}/nextcloud/config:/var/www/html/config
       - ${PERSIST_DIR}/nextcloud/data:/var/www/html/data
+      # Share paperless-ngx consume folder for integration - files dropped here will be processed
+      - ${PERSIST_DIR}/paperless/consume:/paperless-consume
     environment:
       - POSTGRES_HOST=nextcloud-db
       - POSTGRES_DB=nextcloud
@@ -381,5 +383,60 @@ services:
       nextcloud-redis:
         condition: service_started
       collabora-online:
+        condition: service_started
+
+  paperless-db:
+    container_name: paperless-db
+    image: postgres:alpine
+    restart: unless-stopped
+    ports:
+      - "5437:5432"  # Host port 5437 maps to container port 5432
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - ${PERSIST_DIR}/paperless/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperless"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  paperless-redis:
+    container_name: paperless-redis
+    image: redis:alpine
+    restart: unless-stopped
+    volumes:
+      - ${PERSIST_DIR}/paperless/redis:/data
+    command: redis-server --requirepass ${DATABASE_PASSWORD}
+
+  paperless-ngx:
+    container_name: paperless-ngx
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"  # Paperless-ngx web interface
+    volumes:
+      - ${PERSIST_DIR}/paperless/data:/usr/src/paperless/data
+      - ${PERSIST_DIR}/paperless/media:/usr/src/paperless/media
+      - ${PERSIST_DIR}/paperless/export:/usr/src/paperless/export
+      - ${PERSIST_DIR}/paperless/consume:/usr/src/paperless/consume
+    environment:
+      - PAPERLESS_REDIS=redis://:${DATABASE_PASSWORD}@paperless-redis:6379
+      - PAPERLESS_DBHOST=paperless-db
+      - PAPERLESS_DBNAME=paperless
+      - PAPERLESS_DBUSER=paperless
+      - PAPERLESS_DBPASS=${DATABASE_PASSWORD}
+      - PAPERLESS_SECRET_KEY=${PAPERLESS_SECRET_KEY}
+      - PAPERLESS_TIME_ZONE=${PAPERLESS_TIME_ZONE:-America/Chicago}
+      - PAPERLESS_OCR_LANGUAGE=${PAPERLESS_OCR_LANGUAGE:-eng}
+      - PAPERLESS_URL=http://192.168.1.205:8000
+      # Nextcloud integration - API token for Nextcloud Paperless app
+      - PAPERLESS_API_TOKEN=${PAPERLESS_API_TOKEN:-}
+    depends_on:
+      paperless-db:
+        condition: service_healthy
+      paperless-redis:
         condition: service_started
 
