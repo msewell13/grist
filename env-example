@@ -5,3 +5,8 @@ MINIO_PASSWORD=
 DATABASE_PASSWORD=
 OIDC_CLIENT_SECRET=
 HOMARR_SECRET_KEY=
+
+# Collabora Online (optional - has defaults but recommended for security)
+COLLABORA_ALIASGROUP1=https://yourdomain.com:443
+COLLABORA_ADMIN_USER=admin
+COLLABORA_ADMIN_PASSWORD=

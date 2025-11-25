@@ -292,3 +292,94 @@ services:
       docuseal-db:
         condition: service_healthy
 
+  collabora-online:
+    container_name: collabora-online
+    image: collabora/code:latest
+    restart: unless-stopped
+    ports:
+      - "9980:9980"  # Expose Collabora on host port 9980
+    extra_hosts:
+      - "localhost:172.18.0.1"  # Map localhost to Docker gateway IP so Collabora can reach Nextcloud on host
+    cap_add:
+      - SYS_CHROOT  # Required for chroot operations during jail setup
+      - SYS_ADMIN    # Needed for unshare syscalls and namespace creation
+      - FOWNER       # Required for Debian-based distributions
+      - CHOWN        # Required for Debian-based distributions
+    cap_drop:
+      - ALL  # Drop all capabilities except the ones we explicitly add
+    environment:
+      # WOPI host configuration - configure allowed domains that can connect
+      # Example: aliasgroup1=https://yourdomain.com:443
+      # Use ${COLLABORA_ALIASGROUP1} or set directly
+      # For local HTTP use: allow IP address (accessible from both browser and Docker network)
+      - aliasgroup1=${COLLABORA_ALIASGROUP1:-http://192\.168\.1\.205:8082}  # Matches Nextcloud IP address
+      # Admin console credentials (optional)
+      - username=${COLLABORA_ADMIN_USER:-admin}
+      - password=${COLLABORA_ADMIN_PASSWORD:-}
+      # Server name for proxy configuration (set if behind reverse proxy)
+      # This should be the URL that browsers can access Collabora from
+      - server_name=${COLLABORA_SERVER_NAME:-192.168.1.205:9980}
+      # SSL certificate domain (optional)
+      - cert_domain=${COLLABORA_CERT_DOMAIN:-}
+      # Dictionaries - space separated list of language codes (default: de_DE en_GB en_US es_ES fr_FR it nl pt_BR pt_PT ru)
+      - dictionaries=${COLLABORA_DICTIONARIES:-}
+      # Extra parameters for coolwsd (optional)
+      # Disable SSL for local HTTP use
+      - extra_params=${COLLABORA_EXTRA_PARAMS:---o:ssl.enable=false}
+    # Optional: Uncomment to use custom seccomp profile for enhanced security
+    # security_opt:
+    #   - seccomp=/path/to/cool-seccomp-profile.json
+
+  nextcloud-db:
+    container_name: nextcloud-db
+    image: postgres:alpine
+    restart: unless-stopped
+    ports:
+      - "5436:5432"  # Host port 5436 maps to container port 5432
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - ${PERSIST_DIR}/nextcloud/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  nextcloud-redis:
+    container_name: nextcloud-redis
+    image: redis:alpine
+    restart: unless-stopped
+    volumes:
+      - ${PERSIST_DIR}/nextcloud/redis:/data
+    command: redis-server --requirepass ${DATABASE_PASSWORD}
+
+  nextcloud:
+    container_name: nextcloud
+    image: nextcloud:latest
+    restart: unless-stopped
+    ports:
+      - "8082:80"  # Host port 8082 maps to container port 80
+    volumes:
+      - ${PERSIST_DIR}/nextcloud/html:/var/www/html
+      - ${PERSIST_DIR}/nextcloud/config:/var/www/html/config
+      - ${PERSIST_DIR}/nextcloud/data:/var/www/html/data
+    environment:
+      - POSTGRES_HOST=nextcloud-db
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_HOST=nextcloud-redis
+      - REDIS_HOST_PASSWORD=${DATABASE_PASSWORD}
+      # Collabora Online integration - configure this in Nextcloud admin panel
+      # Set WOPI URL to: http://collabora-online:9980
+    depends_on:
+      nextcloud-db:
+        condition: service_healthy
+      nextcloud-redis:
+        condition: service_started
+      collabora-online:
+        condition: service_started
+
