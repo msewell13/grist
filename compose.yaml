@@ -35,8 +35,8 @@ services:
       # External Storage for attachments
       GRIST_EXTERNAL_ATTACHMENTS_MODE: "snapshots"
 
-      GRIST_OIDC_SP_HOST: https://${GRIST_DOMAIN}
-      GRIST_OIDC_IDP_ISSUER: https://${GRIST_DOMAIN}/keycloak/realms/myrealm
+      GRIST_OIDC_SP_HOST: http://${GRIST_OIDC_DOMAIN:-192.168.1.205:8484}
+      GRIST_OIDC_IDP_ISSUER: http://${GRIST_OIDC_IDP_DOMAIN:-192.168.1.205:8080}/keycloak/realms/myrealm
       GRIST_OIDC_IDP_SCOPES: openid profile email
 
       # the ID you chose for the Keycloak client

@@ -1,4 +1,7 @@
 GRIST_DOMAIN=
+# For local OIDC access, use IP address (e.g., 192.168.1.205:8484 for SP_HOST, 192.168.1.205:8080 for IDP)
+# Leave empty to use default local IP, or set to domain for Cloudflare tunnel access
+GRIST_OIDC_DOMAIN=
 GRIST_DEFAULT_EMAIL=
 PERSIST_DIR=./persist
 MINIO_PASSWORD=
