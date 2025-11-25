@@ -1,188 +1,59 @@
-# Sample Grist self-hosted configuration
+# Self-Hosted Application Stack
 
-This is a fairly complete sample Docker Compose configuration
-synthesised from these two existing examples:
+This Docker Compose configuration deploys a comprehensive self-hosted application stack.
 
-- [Traefik basic auth](https://github.com/gristlabs/grist-core/tree/main/docker-compose-examples/grist-traefik-basic-auth)
-- [Keycloak, Postgres, Redis, Minio](https://github.com/gristlabs/grist-core/tree/main/docker-compose-examples/grist-with-keycloak-postgres-redis-minio)
+## Services
 
-I encourage you to read the `compose.yaml` file included in this repo.
-It's annotated and has several options you may want to change, once
-you understand their purpose.
+### **grist**
+Grist is a powerful spreadsheet-database hybrid that lets you organize and analyze data like a spreadsheet, but with the power of a database. It's perfect for managing complex data, creating dashboards, and building custom workflows. Grist combines the familiar interface of spreadsheets with database-like capabilities, making it easy to work with large datasets, create relationships between tables, and build interactive applications.
 
-# Instructions
+### **nextcloud**
+Nextcloud is your personal cloud storage and collaboration platform. It gives you complete control over your files, documents, photos, and more. Think of it as your own private Dropbox or Google Drive, but hosted on your own server. Beyond file storage, Nextcloud includes features for sharing files with others, syncing across devices, managing calendars and contacts, and collaborating on documents in real-time.
 
-Here is how to get a self-hosted Grist instance using this example.
+### **collabora-online**
+Collabora Online is a full-featured office suite that runs in your web browser. It provides real-time collaborative editing of documents, spreadsheets, and presentations - similar to Google Docs or Microsoft Office Online, but self-hosted. When integrated with Nextcloud, you can create and edit office documents directly in your browser without needing desktop software installed. Multiple people can work on the same document simultaneously, seeing each other's changes in real-time.
 
-## Get an Ubuntu server somewhere with a domain name
+### **keycloak**
+Keycloak is an identity and access management system that handles user authentication and authorization for all your services. Instead of managing separate logins for each application, Keycloak provides single sign-on (SSO) - log in once and access everything. It supports various login methods including username/password, social logins (Google, GitHub, etc.), and can manage user accounts, roles, and permissions across your entire application stack.
 
-For this example, we'll be using a t3.small EC2 instance on AWS at my
-personal domain `gristcon.jordigh.com`.
+### **kc_postgresql**
+PostgreSQL database that stores all of Keycloak's data including user accounts, authentication settings, and security configurations.
 
-Use `ssh` to log into your server. We'll be doing most of the
-configuration over the terminal.
+### **ollama**
+Ollama lets you run large language models (like ChatGPT-style AI) completely on your own hardware. Instead of sending your data to cloud services, Ollama runs AI models locally, giving you privacy and control. You can chat with AI, ask questions, generate text, and use AI capabilities without any data leaving your server. It supports many different AI models that you can download and run locally.
 
-## Clone this repo
+### **anythingllm**
+AnythingLLM is an AI assistant that can read and understand your documents. You can upload files, and then have conversations with an AI about the content of those documents. It's like having a smart assistant that has read all your files and can answer questions about them. Perfect for searching through large document collections, summarizing content, or getting answers from your own knowledge base.
 
-```sh
-git clone https://github.com/jordigh/GristCon2025.git
-cd GristCon2025
-```
+### **stirling-pdf**
+Stirling PDF is a comprehensive web-based toolkit for working with PDF files. You can merge multiple PDFs into one, split PDFs apart, rotate pages, convert between formats, extract text, and even perform OCR (Optical Character Recognition) to make scanned documents searchable. All of this happens in your browser without needing to install any software.
 
-## Install Docker
+### **docuseal**
+DocuSeal is an open-source alternative to DocuSign for digital document signing. You can create fillable PDF forms, send them to people for signatures via email, and track who has signed and who hasn't. It's perfect for contracts, agreements, forms, and any document that needs signatures. Everything is handled digitally with a clear audit trail of who signed what and when.
 
-For convenience, there is an included install script.
+### **docuseal-db**
+PostgreSQL database that stores DocuSeal's templates, documents, signatures, and user information.
 
-```sh
-sudo ./install-docker
-```
+### **homarr**
+Homarr is a beautiful dashboard that helps you organize and access all your self-hosted services in one place. Instead of remembering different ports and URLs, Homarr gives you a single homepage with quick links to all your applications. You can customize it with widgets, organize services into categories, and see the status of your services at a glance.
 
-This will install Docker and grant the necessary permissions to use it
-without sudo.
+### **dashdot**
+Dashdot provides real-time monitoring of your server's health and performance. It displays your system's CPU usage, memory consumption, disk space, network activity, and more in an attractive, easy-to-read dashboard. It's like having a system monitor that's always visible, helping you keep an eye on your server's resources and spot potential issues before they become problems.
 
-After installation, log out and log back in with `ssh`.
+### **grist-db**
+PostgreSQL database that stores all of Grist's data including documents, tables, and metadata.
 
-## Fill in env-example
+### **grist-redis**
+Redis cache that helps Grist run faster by storing frequently accessed data in memory.
 
-There is a template for environment variables used to configure this:
+### **grist-minio**
+MinIO is an object storage system (similar to Amazon S3) that stores Grist's document snapshots and files. It provides reliable, scalable storage for all your Grist documents with versioning support, so you can recover previous versions of your work.
 
-```sh
-cp env-example .env
-vim .env
-```
+### **minio-setup**
+A one-time setup container that initializes MinIO by creating the necessary storage buckets and configuring versioning.
 
-The values should be as follows:
+### **nextcloud-db**
+PostgreSQL database that stores Nextcloud's configuration, user accounts, file metadata, and all app data.
 
-- `GRIST_DOMAIN`: The domain name where Grist will be hosted (in this
-  example, `gristcon.jordigh.com`
-- `GRIST_DEFAULT_EMAIL`: The email of the admin user (in this example,
-  `jordi@getgrist.com`)
-- `PERSIST_DIR`: Persistent storage for all of the Docker containers.
-  This includes Keycloak's database as well as Grist's documents. The
-  default value is fine for now.
-- `MINIO_PASSWORD`: A random-looking string. It has to be long and unguesable.
-- `DATABASE_PASSwORD`: Same as above. The same password will be used
-  for Grist's home database as well as Keycloak's database.
-- `OIDC_CLIENT_SECRET`: Leave it blank for now. We will fill this in
-  later once we've setup keycloak.
-
-## Start up Compose
-
-If everything has been set up as above, the following should start up
-most services:
-
-```sh
-docker compose up
-```
-
-You should see minio, Redis, two Postgres instances, KeyCloak start
-up. Finally, Grist should fail to start with the error message `Realm
-does not exist`. This is expected, because KeyCloak needs to be
-configured via its web interface.
-
-## Configure logins
-
-We will do this in two phases. During the first startup, everything
-except Grist should start. In particular, Keycloak will be available
-at `https://$GRIST_DOMAIN/grist` (in this example, at
-https://gristcon.jordigh.com/keycloak ). Once Keycloak is configured,
-we will go back and define `OIDC_CLIENT_SECRET` for Grist so that it
-can connect to Keycloak and use it for authentication.
-
-
-### Configure Keycloak
-
-We need to create a realm, user, and an OIDC client
-
-#### Create a realm and user
-
-For Keycloak, we need to create a new realm named `myrealm` (this name
-matches a name provided in the `compose.yaml` file), and a user in
-this realm. The instructions to do that are
-[here](https://www.keycloak.org/getting-started/getting-started-docker).
-
-**IMPORTANT**: The user must be given the same email as the one
-defined in `GRIST_DEFAULT_EMAIL`. This will make the first user an
-administrator of the Grist instance. Additionally, make sure to click
-that the user's email is verified (it's an extra toggle in Keycloak).
-Otherwise Grist will not allow a login with an unverified email.
-
-#### Create a Grist OIDC client
-
-The next step is to create a client. The instructions are provided
-[here](https://support.getgrist.com/install/oidc/#example-keycloak).
-Use the following settings:
-
-1. **`clientid`**: `gristclient` which matches the value in `compose.yaml` (click Next)
-2. **Client authentication**: On
-3. **Standard flow**: On (click Next)
-4. **Root URL**: `https://$GRIST_DOMAIN` (in this example,
-   `https://gristcon.jordigh.com` )
-5. **Valid redirect URIs**: `/oauth2/callback`
-6. **Valid post logout URIs**: `/*`(click Save)
-
-Once the client is created, click on the **Credentials** tab and copy
-the **ClientSecret** value.
-
-### Finish configuring Grist
-
-Stop the Compose service (Ctrl+C). Go back into the `.env` file and
-fill in the `OIDC_CLIENT_SECRET` variable with the value copied above.
-
-Save and exit run `docker compose up` again.
-
-This time all services should start, including Grist.
-
-## Log in to Grist
-
-Visiting the Grist domain at `https://$GRIST_DOMAIN` (in this example,
-`https://gristcon.jordigh.com`), should now redirect to Keycloak.
-Logging in with the credentials we used before should work, as well as
-logging out.
-
-We can verify in the Grist admin panel that everything works well.
-
-## Adding other login methods
-
-One of the advantages of Keycloak is that it can be used to add other
-identity providers such as Google, Microsoft, or Github. These can be
-used as alternative methods for logging into Grist.
-
-We will do as an example a Github login.
-
-### Create a new OAuth app
-
-Navigate to [github's developer
-settings](https://github.com/settings/developers), and create a new
-OAuth app. We will register our Keycloak as an OAuth app on Github.
-
-Use the following settings:
-
-1. **Application name**: Grist
-2. **Homepage URL**: `https://$GRIST_DOMAIN/keycloak` (in this example,
-   `https://gristcon.jordigh.com/keycloak` )
-3. **Authorization callback URL**:
-   `https://$GRIST_DOMAIN/keycloak/realms/myrealm/broker/github/endpoint`
-   (in this example
-   `https://gristcon.jordigh.com/keycloak/realms/myrealm/broker/github/endpoint` )
-
-This should now give you a client ID. Click on **Generate new client
-secret** to also obtain a client secret.
-
-### Add Github as an identity provider on Keycloak
-
-Log back into the Keycloak admin console at
-`https://$GRIST_DOMAIN/keycloak` (in this example,
-`https://gristcon.jordigh.com/keycloak`), and make sure you're in the
-`myrealm` realm.
-
-1. Click on **Identity Providers** in the left side bar.
-2. Click on the Github icon
-3. Paste the **Client ID** and **Client Secret** obtained from the
-   OAuth application in Github as above.
-4. Click **Add**.
-5. Scroll down a bit to **Trust Email** and set it to On
-
-### Test github login
-
-That should now work!
+### **nextcloud-redis**
+Redis cache that speeds up Nextcloud by caching frequently accessed data and managing file locks for better performance.
